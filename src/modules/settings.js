@@ -15,8 +15,9 @@ function getCards() { try { return { ...DEFAULT_CARDS, ...(JSON.parse(getStored(
 function saveCards(cards) { try { localStorage.setItem(CARD_SETTINGS_KEY, JSON.stringify(cards)); return true; } catch { return false; } }
 function getOrder() { try { const stored = JSON.parse(getStored(CARD_ORDER_KEY) || "[]"); return [...stored.filter(key => DEFAULT_ORDER.includes(key)), ...DEFAULT_ORDER.filter(key => !stored.includes(key))]; } catch { return [...DEFAULT_ORDER]; } }
 function saveOrder(order) { try { localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(order)); return true; } catch { return false; } }
-function installCardMarkers() { const panels = document.querySelectorAll("#jarvisRoot .panels > .panel"); DEFAULT_ORDER.forEach((key,index)=>{if(panels[index]) panels[index].dataset.cardKey=key}); applyCardLayout(); }
+function installCardMarkers() { const panels = document.querySelectorAll("#jarvisRoot .panels > .panel"); if (!panels.length) return false; DEFAULT_ORDER.forEach((key,index)=>{if(panels[index]) panels[index].dataset.cardKey=key}); applyCardLayout(); return true; }
 function applyCardLayout(cards=getCards(), order=getOrder()) { const container=document.querySelector("#jarvisRoot .panels"); if(!container)return; const panels=new Map([...container.querySelectorAll(":scope > .panel")].map(p=>[p.dataset.cardKey,p])); order.forEach(key=>{const p=panels.get(key);if(p){p.style.display=cards[key]?"":"none";container.appendChild(p)}}); }
+
 function installSettingsUI() {
   if (document.getElementById("jarvisAccountButton")) return;
   const style=document.createElement("style"); style.textContent=`
@@ -48,6 +49,10 @@ function installSettingsUI() {
   saveButton.onclick=()=>{if(!dirty)return;if(saveCards(draftCards)&&saveOrder(draftOrder)){applyCardLayout(draftCards,draftOrder);closeSettings()}};
   accountModal.addEventListener("click",e=>{if(e.target===accountModal)closeAccount()});settingsModal.addEventListener("click",e=>{if(e.target===settingsModal){renderCardSettings();closeSettings()}});
   accountModal.querySelector("#jarvisAccountSave").onclick=()=>{const url=urlInput.value.trim().replace(/\/$/,"");const token=tokenInput.value.trim();if(url&&!/^https?:\/\//i.test(url)){urlInput.focus();return}if(!saveStored(URL_KEY,url)||!saveStored(TOKEN_KEY,token))return;closeAccount();location.reload()};
+
+  // main.js renders the cards after this module starts; re-apply markers/layout whenever the dashboard is rendered.
+  const root=document.getElementById("jarvisRoot");
+  if(root){const observer=new MutationObserver(()=>{if(installCardMarkers()) observer.disconnect()});observer.observe(root,{childList:true,subtree:true});}
   installCardMarkers();
 }
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",installSettingsUI,{once:true});else installSettingsUI();
