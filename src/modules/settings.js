@@ -24,6 +24,7 @@ function installSettingsUI() {
   const style=document.createElement("style"); style.textContent=`
     .jarvisTopIcon{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:1000;width:38px;height:38px;padding:0;border:0;background:transparent;color:#7eefff;border-radius:0;font-size:18px;line-height:38px;text-align:center;box-shadow:none}
     #jarvisSettingsButton{top:max(54px,calc(env(safe-area-inset-top) + 46px));font-size:16px}
+    .jarvisRefreshButton{position:fixed;top:max(96px,calc(env(safe-area-inset-top) + 88px));right:12px;z-index:1000;width:38px;height:38px;padding:0;border:0;background:transparent;color:#7eefff;border-radius:0;font-size:18px;line-height:38px;text-align:center;box-shadow:none}
     .jarvisModal{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:20px}.jarvisModal.open{display:flex}
     .jarvisModalCard{width:min(520px,100%);max-height:85vh;overflow:auto;background:#07111f;border:1px solid rgba(0,220,255,.55);border-radius:16px;padding:20px;box-shadow:0 0 40px rgba(0,180,255,.18);color:#dffaff;font-family:Rajdhani,Arial}
     .jarvisModalCard h2{margin:0 0 14px;font:900 18px Orbitron,Arial;letter-spacing:1px;color:#7eefff}.jarvisModalCard label{display:block;margin:12px 0 6px;font-weight:700;font-size:12px;letter-spacing:.8px}
@@ -32,9 +33,10 @@ function installSettingsUI() {
   `; document.head.appendChild(style);
   const accountButton=document.createElement("button");accountButton.id="jarvisAccountButton";accountButton.className="jarvisTopIcon";accountButton.type="button";accountButton.title="Compte";accountButton.setAttribute("aria-label","Compte");accountButton.textContent="👤";
   const settingsButton=document.createElement("button");settingsButton.id="jarvisSettingsButton";settingsButton.className="jarvisTopIcon";settingsButton.type="button";settingsButton.title="Réglages";settingsButton.setAttribute("aria-label","Réglages");settingsButton.textContent="⚙️";
+  const refreshButton=document.createElement("button");refreshButton.id="jarvisRefreshButton";refreshButton.className="jarvisRefreshButton";refreshButton.type="button";refreshButton.title="Actualiser";refreshButton.setAttribute("aria-label","Actualiser");refreshButton.textContent="↻";
   const accountModal=document.createElement("div");accountModal.id="jarvisAccountModal";accountModal.className="jarvisModal";accountModal.innerHTML=`<div class="jarvisModalCard" role="dialog" aria-modal="true"><h2>COMPTE</h2><label for="jarvisHaUrl">URL HOME ASSISTANT</label><input id="jarvisHaUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://homeassistant.exemple.com"><label for="jarvisHaToken">TOKEN HOME ASSISTANT</label><input id="jarvisHaToken" type="password" autocomplete="off" placeholder="Colle ton token ici"><div class="jarvisModalActions"><button id="jarvisAccountCancel" type="button">ANNULER</button><button id="jarvisAccountSave" class="jarvisPrimary" type="button">ENREGISTRER</button></div><div class="jarvisNote">Le token reste uniquement dans le stockage local de ce navigateur.</div></div>`;
   const settingsModal=document.createElement("div");settingsModal.id="jarvisSettingsModal";settingsModal.className="jarvisModal";settingsModal.innerHTML=`<div class="jarvisModalCard" role="dialog" aria-modal="true"><h2>RÉGLAGES</h2><div class="jarvisCardList" id="jarvisCardList"></div><div class="jarvisModalActions"><button id="jarvisSettingsCancel" type="button">FERMER</button><button id="jarvisSettingsSave" class="jarvisPrimary" type="button" disabled>VALIDER</button></div><div class="jarvisNote">Les changements ne seront appliqués qu'après validation.<br>Fermer annule les modifications.</div></div>`;
-  document.body.append(accountButton,settingsButton,accountModal,settingsModal);
+  document.body.append(accountButton,settingsButton,refreshButton,accountModal,settingsModal);
   const urlInput=accountModal.querySelector("#jarvisHaUrl"),tokenInput=accountModal.querySelector("#jarvisHaToken"),cardList=settingsModal.querySelector("#jarvisCardList"),saveButton=settingsModal.querySelector("#jarvisSettingsSave");
   let draftCards=null,draftOrder=null,dirty=false;
   function markDirty(){dirty=true;saveButton.disabled=false;saveButton.classList.add("jarvisDirty")}
@@ -43,7 +45,7 @@ function installSettingsUI() {
   function closeAccount(){accountModal.classList.remove("open")}
   function openSettings(){renderCardSettings();settingsModal.classList.add("open")}
   function closeSettings(){settingsModal.classList.remove("open")}
-  accountButton.onclick=openAccount;settingsButton.onclick=openSettings;accountModal.querySelector("#jarvisAccountCancel").onclick=closeAccount;
+  accountButton.onclick=openAccount;settingsButton.onclick=openSettings;refreshButton.onclick=()=>location.reload();accountModal.querySelector("#jarvisAccountCancel").onclick=closeAccount;
   settingsModal.querySelector("#jarvisSettingsCancel").onclick=()=>{renderCardSettings();closeSettings()};
   saveButton.onclick=()=>{if(!dirty)return;if(saveCards(draftCards)&&saveOrder(draftOrder)){applyCardLayout(draftCards,draftOrder);closeSettings()}};
   accountModal.addEventListener("click",e=>{if(e.target===accountModal)closeAccount()});settingsModal.addEventListener("click",e=>{if(e.target===settingsModal){renderCardSettings();closeSettings()}});
