@@ -1,4 +1,4 @@
-// JARVIS V8 — Home Assistant API helpers
+// JARVIS V8.2 — Home Assistant API helpers
 
 import { getHAUrl } from "./config.js";
 import { log, logError, logOK, logWarning } from "./logger.js";
@@ -16,13 +16,20 @@ export async function haFetch(path, options = {}, token = "") {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...options,
-    headers
-  });
+  let response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...options,
+      headers
+    });
+  } catch (error) {
+    throw new Error(`RÉSEAU/CORS — ${error?.message || "Load failed"}`);
+  }
 
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    if (response.status === 401) throw new Error("TOKEN INVALIDE — HTTP 401");
+    if (response.status === 403) throw new Error("ACCÈS REFUSÉ — HTTP 403");
+    throw new Error(`ERREUR HOME ASSISTANT — HTTP ${response.status}`);
   }
 
   return response;
@@ -34,12 +41,20 @@ export async function testHomeAssistant(token) {
     return false;
   }
 
+  const url = getHAUrl();
+  if (!url) {
+    logError("URL Home Assistant non configurée.");
+    return false;
+  }
+
+  log(`📡 Test HA V8.2 → ${url}`);
+
   try {
     await haFetch("/api/", { method: "GET" }, token);
     logOK("✅ Home Assistant connecté.");
     return true;
   } catch (error) {
-    logError(`Home Assistant hors ligne : ${error.message}`);
+    logError(`Home Assistant : ${error.message}`);
     return false;
   }
 }
