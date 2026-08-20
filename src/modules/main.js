@@ -202,6 +202,7 @@ async function activateSatellite() {
 
   try {
     await activateJarvisSatellite(token, {
+      music,
       onStateChange: state => {
         setState(state);
         $("micStatus").textContent = state === "listening" ? "ÉCOUTE..." : state.toUpperCase();
