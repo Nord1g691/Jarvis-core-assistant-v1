@@ -15,16 +15,14 @@ function getCards() { try { return { ...DEFAULT_CARDS, ...(JSON.parse(getStored(
 function saveCards(cards) { try { localStorage.setItem(CARD_SETTINGS_KEY, JSON.stringify(cards)); return true; } catch { return false; } }
 function getOrder() { try { const stored = JSON.parse(getStored(CARD_ORDER_KEY) || "[]"); return [...stored.filter(key => DEFAULT_ORDER.includes(key)), ...DEFAULT_ORDER.filter(key => !stored.includes(key))]; } catch { return [...DEFAULT_ORDER]; } }
 function saveOrder(order) { try { localStorage.setItem(CARD_ORDER_KEY, JSON.stringify(order)); return true; } catch { return false; } }
-
 function installCardMarkers() { const panels = document.querySelectorAll("#jarvisRoot .panels > .panel"); DEFAULT_ORDER.forEach((key,index)=>{if(panels[index]) panels[index].dataset.cardKey=key}); applyCardLayout(); }
 function applyCardLayout(cards=getCards(), order=getOrder()) { const container=document.querySelector("#jarvisRoot .panels"); if(!container)return; const panels=new Map([...container.querySelectorAll(":scope > .panel")].map(p=>[p.dataset.cardKey,p])); order.forEach(key=>{const p=panels.get(key);if(p){p.style.display=cards[key]?"":"none";container.appendChild(p)}}); }
-
 function installSettingsUI() {
   if (document.getElementById("jarvisAccountButton")) return;
   const style=document.createElement("style"); style.textContent=`
-    .jarvisTopIcon{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:1000;width:38px;height:38px;padding:0;border:0;background:transparent;color:#7eefff;border-radius:0;font-size:18px;line-height:38px;text-align:center;box-shadow:none}
-    #jarvisSettingsButton{top:max(54px,calc(env(safe-area-inset-top) + 46px));font-size:16px}
-    .jarvisRefreshButton{position:fixed;top:max(96px,calc(env(safe-area-inset-top) + 88px));right:12px;z-index:1000;width:38px;height:38px;padding:0;border:0;background:transparent;color:#7eefff;border-radius:0;font-size:18px;line-height:38px;text-align:center;box-shadow:none}
+    .jarvisTopIcon{position:fixed!important;top:max(12px,env(safe-area-inset-top))!important;right:12px!important;z-index:2147483000!important;width:38px!important;height:38px!important;padding:0!important;border:0!important;background:transparent!important;color:#7eefff!important;border-radius:0!important;font-size:18px!important;line-height:38px!important;text-align:center!important;box-shadow:none!important;transform:none!important}
+    #jarvisSettingsButton{top:max(54px,calc(env(safe-area-inset-top) + 46px))!important;font-size:16px!important}
+    .jarvisRefreshButton{position:fixed!important;top:max(96px,calc(env(safe-area-inset-top) + 88px))!important;right:12px!important;z-index:2147483000!important;width:38px!important;height:38px!important;padding:0!important;border:0!important;background:transparent!important;color:#7eefff!important;border-radius:0!important;font-size:18px!important;line-height:38px!important;text-align:center!important;box-shadow:none!important;transform:none!important}
     .jarvisModal{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:20px}.jarvisModal.open{display:flex}
     .jarvisModalCard{width:min(520px,100%);max-height:85vh;overflow:auto;background:#07111f;border:1px solid rgba(0,220,255,.55);border-radius:16px;padding:20px;box-shadow:0 0 40px rgba(0,180,255,.18);color:#dffaff;font-family:Rajdhani,Arial}
     .jarvisModalCard h2{margin:0 0 14px;font:900 18px Orbitron,Arial;letter-spacing:1px;color:#7eefff}.jarvisModalCard label{display:block;margin:12px 0 6px;font-weight:700;font-size:12px;letter-spacing:.8px}
