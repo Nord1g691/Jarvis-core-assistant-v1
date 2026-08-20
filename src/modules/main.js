@@ -1,4 +1,4 @@
-// JARVIS V8 — application entry point
+// JARVIS V8.1 — application entry point
 import { $ } from "./dom.js";
 import { setCoreState } from "./core-state.js";
 import { createRecognition, startRecognition, stopRecognition } from "./voice.js";
@@ -10,21 +10,12 @@ import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
-// Token local uniquement : jamais commité dans le dépôt partagé.
-// Pour le développement, définir window.JARVIS_TOKEN avant le chargement de main.js
-// ou enregistrer la valeur dans localStorage sous "jarvis_ha_token".
+const JARVIS_VERSION = "V8.1";
+
 function getToken() {
-  const runtimeToken = typeof window.JARVIS_TOKEN === "string"
-    ? window.JARVIS_TOKEN.trim()
-    : "";
-
+  const runtimeToken = typeof window.JARVIS_TOKEN === "string" ? window.JARVIS_TOKEN.trim() : "";
   if (runtimeToken) return runtimeToken;
-
-  try {
-    return localStorage.getItem("jarvis_ha_token")?.trim() || "";
-  } catch {
-    return "";
-  }
+  try { return localStorage.getItem("jarvis_ha_token")?.trim() || ""; } catch { return ""; }
 }
 
 let connected = false;
@@ -36,7 +27,6 @@ let music = null;
 function render() {
   const root = $("jarvisRoot");
   if (!root) return;
-
   root.innerHTML = `
     <section class="coreZone"><div class="core" id="core">
       <div class="tapZone" id="tapZone" role="button" tabindex="0" aria-label="Appuyer pour parler à JARVIS"></div>
@@ -64,7 +54,8 @@ function render() {
       </div>
       <div class="panel"><div class="panelTitle"><span>État système</span><span id="systemState">INITIALISATION</span></div><div class="controls"><button data-state="idle">AUTO</button><button data-state="listening">ÉCOUTE</button><button data-state="processing">RÉFLEXION</button><button data-state="responding">RÉPONSE</button></div></div>
       <div class="panel consolePanel"><div class="panelTitle"><span>Console JARVIS</span><button id="clearBtn" style="min-height:24px;padding:2px 8px;font-size:7px">EFFACER</button></div><div class="console" id="co"></div></div>
-    </section>`;
+    </section>
+    <div style="position:fixed;right:8px;bottom:6px;font-size:8px;opacity:.65;z-index:9999">JARVIS ${JARVIS_VERSION}</div>`;
 }
 
 function setState(state) {
@@ -75,216 +66,46 @@ function setState(state) {
 
 function speak(text) {
   if (muted || !window.speechSynthesis) return;
-
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "fr-FR";
-  u.volume = 0.75;
-  u.rate = 0.95;
-  u.pitch = 0.85;
-  u.onstart = () => {
-    setState("responding");
-    $("micStatus").textContent = "JARVIS PARLE...";
-  };
-  u.onend = async () => {
-    setState("idle");
-    $("micStatus").textContent = "PRÊT";
-
-    if (!muted && connected) {
-      const r = ensureRecognition();
-      if (r && !listening) {
-        await startRecognition(r);
-      }
-    }
-  };
-  u.onerror = () => {
-    logError("Erreur synthèse vocale.");
-    setState("idle");
-    $("micStatus").textContent = "ERREUR";
-  };
+  const u = new SpeechSynthesisUtterance(text); u.lang = "fr-FR"; u.volume = 0.75; u.rate = 0.95; u.pitch = 0.85;
+  u.onstart = () => { setState("responding"); $("micStatus").textContent = "JARVIS PARLE..."; };
+  u.onend = async () => { setState("idle"); $("micStatus").textContent = "PRÊT"; if (!muted && connected) { const r = ensureRecognition(); if (r && !listening) await startRecognition(r); } };
+  u.onerror = () => { logError("Erreur synthèse vocale."); setState("idle"); $("micStatus").textContent = "ERREUR"; };
   window.speechSynthesis.speak(u);
 }
 
 async function testHA() {
   const token = getToken();
-
-  if (!token) {
-    connected = false;
-    $("connectionText").textContent = "CONFIGURATION";
-    $("connectionStatus")?.classList.remove("online");
-    $("connectionStatus")?.classList.add("offline");
-    $("tokenWarning")?.classList.add("show");
-    $("systemState").textContent = "TOKEN";
-    logError("Token Home Assistant requis.");
-    return false;
-  }
-
+  if (!token) { connected = false; $("connectionText").textContent = "CONFIGURATION"; $("connectionStatus")?.classList.remove("online"); $("connectionStatus")?.classList.add("offline"); $("tokenWarning")?.classList.add("show"); $("systemState").textContent = "TOKEN"; logError("Token Home Assistant requis."); return false; }
   $("tokenWarning")?.classList.remove("show");
   connected = await testHomeAssistant(token);
   $("connectionText").textContent = connected ? "EN LIGNE" : "HORS LIGNE";
-  $("connectionStatus")?.classList.toggle("online", connected);
-  $("connectionStatus")?.classList.toggle("offline", !connected);
-  $("systemState").textContent = connected ? "ONLINE" : "OFFLINE";
-  if (connected) setState("idle");
-  return connected;
+  $("connectionStatus")?.classList.toggle("online", connected); $("connectionStatus")?.classList.toggle("offline", !connected);
+  $("systemState").textContent = connected ? "ONLINE" : "OFFLINE"; if (connected) setState("idle"); return connected;
 }
 
-async function refreshEnergy() {
-  const token = getToken();
-  if (!token) return;
-  await updateEnergyPanel({ connected, token });
-}
-
-async function send(text) {
-  if (!text?.trim()) return;
-
-  const command = text.trim();
-  log(`⌨️ Commande : ${command}`);
-  const token = getToken();
-
-  await sendToAssist(command, {
-    token,
-    connected,
-    testHA,
-    music,
-    onSpeech: async speech => speak(speech),
-    onNoSpeech: () => setState("idle")
-  });
-}
-
-function ensureRecognition() {
-  if (recognition) return recognition;
-
-  recognition = createRecognition({
-    music,
-    onListeningChange: value => {
-      listening = value;
-      if (!value && $("micStatus")?.textContent === "ÉCOUTE...") {
-        $("micStatus").textContent = "PRÊT";
-      }
-    },
-    onTranscript: transcript => send(transcript)
-  });
-
-  return recognition;
-}
-
-async function toggleVoice() {
-  if (muted) return;
-
-  const r = ensureRecognition();
-  if (!r) return;
-
-  if (listening) {
-    stopRecognition(r);
-    setState("idle");
-    return;
-  }
-
-  if (!connected && !(await testHA())) return;
-  await startRecognition(r);
-}
-
-function updateMusicUI() {
-  const track = music?.getTrack?.();
-  const player = music?.player;
-  $("musicName").textContent = track?.name || "Aucun morceau";
-  $("musicStatus").textContent = player?.paused ? (track ? "PAUSE" : "ARRÊTÉE") : track ? "LECTURE" : "ARRÊTÉE";
-  $("playBtn").textContent = player?.paused ? "▶" : track ? "⏸" : "▶";
-}
-
-async function toggleMusic() {
-  await music?.toggle?.();
-  updateMusicUI();
-}
-
-function stopMusic() {
-  music?.stop?.();
-  updateMusicUI();
-}
-
-async function activateSatellite() {
-  const token = getToken();
-  if (!connected && !(await testHA())) return;
-
-  try {
-    await activateJarvisSatellite(token, {
-      music,
-      onStateChange: state => {
-        setState(state);
-        $("micStatus").textContent = state === "listening" ? "ÉCOUTE..." : state.toUpperCase();
-      }
-    });
-  } catch (error) {
-    logError(`Satellite : ${error.message}`);
-  }
-}
+async function refreshEnergy() { const token = getToken(); if (!token) return; await updateEnergyPanel({ connected, token }); }
+async function send(text) { if (!text?.trim()) return; const command = text.trim(); log(`⌨️ Commande : ${command}`); const token = getToken(); await sendToAssist(command, { token, connected, testHA, music, onSpeech: async speech => speak(speech), onNoSpeech: () => setState("idle") }); }
+function ensureRecognition() { if (recognition) return recognition; recognition = createRecognition({ music, onListeningChange: value => { listening = value; if (!value && $("micStatus")?.textContent === "ÉCOUTE...") $("micStatus").textContent = "PRÊT"; }, onTranscript: transcript => send(transcript) }); return recognition; }
+async function toggleVoice() { if (muted) return; const r = ensureRecognition(); if (!r) return; if (listening) { stopRecognition(r); setState("idle"); return; } if (!connected && !(await testHA())) return; await startRecognition(r); }
+function updateMusicUI() { const track = music?.getTrack?.(); const player = music?.player; $("musicName").textContent = track?.name || "Aucun morceau"; $("musicStatus").textContent = player?.paused ? (track ? "PAUSE" : "ARRÊTÉE") : track ? "LECTURE" : "ARRÊTÉE"; $("playBtn").textContent = player?.paused ? "▶" : track ? "⏸" : "▶"; }
+async function toggleMusic() { await music?.toggle?.(); updateMusicUI(); }
+function stopMusic() { music?.stop?.(); updateMusicUI(); }
+async function activateSatellite() { const token = getToken(); if (!connected && !(await testHA())) return; try { await activateJarvisSatellite(token, { music, onStateChange: state => { setState(state); $("micStatus").textContent = state === "listening" ? "ÉCOUTE..." : state.toUpperCase(); } }); } catch (error) { logError(`Satellite : ${error.message}`); } }
 
 function bind() {
-  $("sendBtn").onclick = async () => {
-    const input = $("ci");
-    const text = input.value;
-    input.value = "";
-    await send(text);
-  };
-
-  $("ci").onkeydown = e => {
-    if (e.key === "Enter") $("sendBtn").click();
-  };
-
-  $("voiceBtn").onclick = toggleVoice;
-  $("tapZone").onclick = toggleVoice;
-  $("testBtn").onclick = testHA;
-  $("satelliteBtn").onclick = activateSatellite;
-
-  $("muteBtn").onclick = () => {
-    muted = !muted;
-
-    if (muted) {
-      stopRecognition(recognition);
-      window.speechSynthesis?.cancel();
-      stopMusic();
-      $("muteBtn").textContent = "🔊 ACTIVER";
-      $("micStatus").textContent = "COUPÉ";
-      setState("idle");
-      log("🔇 Audio désactivé.");
-    } else {
-      $("muteBtn").textContent = "🔇 MUTE";
-      $("micStatus").textContent = "PRÊT";
-      logOK("🔊 Audio réactivé.");
-    }
-  };
-
-  $("playBtn").onclick = toggleMusic;
-  $("stopBtn").onclick = stopMusic;
-  $("prevBtn").onclick = () => music?.previous?.().then(updateMusicUI);
-  $("nextBtn").onclick = () => music?.next?.().then(updateMusicUI);
-
-  $("musicVolume").oninput = e => {
-    music?.setVolume?.(e.target.value);
-    $("musicVolumeLabel").textContent = `${e.target.value}%`;
-  };
-
+  $("sendBtn").onclick = async () => { const input = $("ci"); const text = input.value; input.value = ""; await send(text); };
+  $("ci").onkeydown = e => { if (e.key === "Enter") $("sendBtn").click(); };
+  $("voiceBtn").onclick = toggleVoice; $("tapZone").onclick = toggleVoice; $("testBtn").onclick = testHA; $("satelliteBtn").onclick = activateSatellite;
+  $("muteBtn").onclick = () => { muted = !muted; if (muted) { stopRecognition(recognition); window.speechSynthesis?.cancel(); stopMusic(); $("muteBtn").textContent = "🔊 ACTIVER"; $("micStatus").textContent = "COUPÉ"; setState("idle"); log("🔇 Audio désactivé."); } else { $("muteBtn").textContent = "🔇 MUTE"; $("micStatus").textContent = "PRÊT"; logOK("🔊 Audio réactivé."); } };
+  $("playBtn").onclick = toggleMusic; $("stopBtn").onclick = stopMusic; $("prevBtn").onclick = () => music?.previous?.().then(updateMusicUI); $("nextBtn").onclick = () => music?.next?.().then(updateMusicUI);
+  $("musicVolume").oninput = e => { music?.setVolume?.(e.target.value); $("musicVolumeLabel").textContent = `${e.target.value}%`; };
   $("clearBtn").onclick = () => { $("co").innerHTML = ""; };
-
-  document.querySelectorAll("[data-state]").forEach(btn => {
-    btn.onclick = () => setState(btn.dataset.state);
-  });
+  document.querySelectorAll("[data-state]").forEach(btn => { btn.onclick = () => setState(btn.dataset.state); });
 }
 
 export function initJarvis() {
-  render();
-  music = createMusicController({ playlist: JARVIS_MUSIC, duckFactor: MUSIC_DUCK_FACTOR });
-  bind();
-  log("🤖 JARVIS V8 initialisation...");
-  setState("idle");
-  testHA();
-  refreshEnergy();
-  setInterval(refreshEnergy, 5000);
+  render(); music = createMusicController({ playlist: JARVIS_MUSIC, duckFactor: MUSIC_DUCK_FACTOR }); bind(); log(`🤖 JARVIS ${JARVIS_VERSION} — version test`); setState("idle"); testHA(); refreshEnergy(); setInterval(refreshEnergy, 5000);
 }
 
-if (document.readyState === "loading") {
-  window.addEventListener("DOMContentLoaded", initJarvis, { once: true });
-} else {
-  initJarvis();
-}
+if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", initJarvis, { once: true }); else initJarvis();
