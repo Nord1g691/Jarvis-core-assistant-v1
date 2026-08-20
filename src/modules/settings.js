@@ -77,3 +77,15 @@ function installSettingsUI() {
   installCardMarkers();
 }
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",installSettingsUI,{once:true});else installSettingsUI();
+
+// Aligne l'ancienne ligne de démarrage affichée par main.js sur la version UI actuelle.
+const logVersionObserver = new MutationObserver(() => {
+  const consoleEl = document.getElementById("co");
+  if (!consoleEl) return;
+  consoleEl.querySelectorAll("*").forEach(el => {
+    if (el.childElementCount === 0 && el.textContent.includes("JARVIS V8.9 — version test")) {
+      el.textContent = el.textContent.replace("JARVIS V8.9 — version test", "JARVIS V8.9.1 — version test");
+    }
+  });
+});
+logVersionObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
