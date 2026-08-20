@@ -25,9 +25,11 @@ let listening = false;
 let recognition = null;
 let music = null;
 let voiceSafetyTimer = null;
+let voiceStartTimer = null;
 
 function clearVoiceSafetyTimer() {
   if (voiceSafetyTimer) { clearTimeout(voiceSafetyTimer); voiceSafetyTimer = null; }
+  if (voiceStartTimer) { clearTimeout(voiceStartTimer); voiceStartTimer = null; }
 }
 
 function render() {
@@ -117,8 +119,12 @@ function speak(text) {
   }
   clearVoiceSafetyTimer();
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text); u.lang = "fr-FR"; u.volume = .75; u.rate = .95; u.pitch = .85;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "fr-FR"; u.volume = .75; u.rate = .95; u.pitch = .85;
+  let started = false;
   u.onstart = () => {
+    started = true;
+    if (voiceStartTimer) { clearTimeout(voiceStartTimer); voiceStartTimer = null; }
     setState("responding");
     $("micStatus").textContent = "🔊 JARVIS PARLE...";
     logOK("🔊 Synthèse vocale démarrée.");
@@ -130,6 +136,16 @@ function speak(text) {
     finishVoiceResponse("Erreur audio — ouverture de la fenêtre d'écoute");
   };
   window.speechSynthesis.speak(u);
+
+  // Certains navigateurs ne déclenchent pas onstart/onerror quand la sortie audio est bloquée.
+  // On ne laisse donc jamais JARVIS rester indéfiniment sur « PARLE ».
+  voiceStartTimer = setTimeout(() => {
+    voiceStartTimer = null;
+    if (!started) {
+      logError("Synthèse vocale sans événement de démarrage — réponse écrite conservée.");
+      finishVoiceResponse("Sécurité sortie vocale — ouverture de la fenêtre d'écoute");
+    }
+  }, 2500);
 }
 
 async function testHA() {
