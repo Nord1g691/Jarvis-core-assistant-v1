@@ -34,6 +34,7 @@ function installSettingsUI() {
     .jarvisCardList{display:flex;flex-direction:column;gap:6px}.jarvisCardRow{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid rgba(126,239,255,.12);border-radius:9px;background:rgba(2,8,18,.45);user-select:none}.jarvisDrag{opacity:.55;font-size:16px}.jarvisCardName{font-weight:700;font-size:14px;flex:1}.jarvisSwitch{position:relative;width:46px;height:26px;flex:0 0 46px}.jarvisSwitch input{opacity:0;width:0;height:0}.jarvisSlider{position:absolute;inset:0;border-radius:20px;background:#263746;border:1px solid #45606e;transition:.2s}.jarvisSlider:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#9aa8b0;transition:.2s}.jarvisSwitch input:checked+.jarvisSlider{background:#064b5b;border-color:#00c8ee}.jarvisSwitch input:checked+.jarvisSlider:before{transform:translateX(20px);background:#7eefff}
     .jarvisMoveButtons{display:flex;flex-direction:column;gap:3px;flex:0 0 30px}.jarvisMoveButtons button{width:30px;height:24px;padding:0;border:1px solid #24516b;border-radius:5px;background:#0a1b2a;color:#7eefff;font-size:13px;line-height:20px}.jarvisMoveButtons button:disabled{opacity:.25}
     .jarvisVoiceSetting{margin-top:16px;padding-top:14px;border-top:1px solid rgba(126,239,255,.12)}.jarvisRangeRow{display:flex;align-items:center;gap:10px}.jarvisRangeRow input[type="range"]{flex:1}.jarvisRangeValue{min-width:44px;text-align:right;color:#7eefff;font-weight:700}
+    body.jarvisModalOpen .jarvisTopIcon,body.jarvisModalOpen .jarvisRefreshButton{display:none!important}
   `; document.head.appendChild(style);
   const accountButton=document.createElement("button");accountButton.id="jarvisAccountButton";accountButton.className="jarvisTopIcon";accountButton.type="button";accountButton.title="Compte";accountButton.setAttribute("aria-label","Compte");accountButton.textContent="👤";
   const settingsButton=document.createElement("button");settingsButton.id="jarvisSettingsButton";settingsButton.className="jarvisTopIcon";settingsButton.type="button";settingsButton.title="Réglages";settingsButton.setAttribute("aria-label","Réglages");settingsButton.textContent="⚙️";
@@ -44,8 +45,8 @@ function installSettingsUI() {
   const urlInput=accountModal.querySelector("#jarvisHaUrl"),tokenInput=accountModal.querySelector("#jarvisHaToken"),cardList=settingsModal.querySelector("#jarvisCardList"),saveButton=settingsModal.querySelector("#jarvisSettingsSave"),voiceTimeoutInput=settingsModal.querySelector("#jarvisVoiceTimeout"),voiceTimeoutValue=settingsModal.querySelector("#jarvisVoiceTimeoutValue");
   let draftCards=null,draftOrder=null,draftVoiceTimeout=DEFAULT_VOICE_TIMEOUT,dirty=false;
   function markDirty(){dirty=true;saveButton.disabled=false;saveButton.classList.add("jarvisDirty")}
-  function renderCardSettings(){
-    draftCards={...getCards()};draftOrder=[...getOrder()];draftVoiceTimeout=getVoiceResponseTimeout();dirty=false;saveButton.disabled=true;saveButton.classList.remove("jarvisDirty");voiceTimeoutInput.value=String(draftVoiceTimeout);voiceTimeoutValue.textContent=`${draftVoiceTimeout} s`;cardList.innerHTML="";
+  function renderDraftCardSettings(){
+    cardList.innerHTML="";
     draftOrder.forEach((key,index)=>{
       const row=document.createElement("div");row.className="jarvisCardRow";row.dataset.cardKey=key;
       row.innerHTML=`<span class="jarvisDrag">☷</span><span class="jarvisCardName">${CARD_LABELS[key]}</span><div class="jarvisMoveButtons"><button type="button" data-move="up" aria-label="Monter" ${index===0?"disabled":""}>▲</button><button type="button" data-move="down" aria-label="Descendre" ${index===draftOrder.length-1?"disabled":""}>▼</button></div><label class="jarvisSwitch"><input type="checkbox" ${draftCards[key]?"checked":""}><span class="jarvisSlider"></span></label>`;
@@ -55,16 +56,17 @@ function installSettingsUI() {
       cardList.appendChild(row);
     });
   }
-  function moveCard(index,delta){const target=index+delta;if(target<0||target>=draftOrder.length)return;[draftOrder[index],draftOrder[target]]=[draftOrder[target],draftOrder[index]];const currentCards={...draftCards},currentTimeout=draftVoiceTimeout;renderCardSettings();draftCards=currentCards;draftVoiceTimeout=currentTimeout;markDirty()}
-  function openAccount(){urlInput.value=getStored(URL_KEY);tokenInput.value=getStored(TOKEN_KEY);accountModal.classList.add("open");setTimeout(()=>urlInput.focus(),50)}
-  function closeAccount(){accountModal.classList.remove("open")}
-  function openSettings(){renderCardSettings();settingsModal.classList.add("open")}
-  function closeSettings(){settingsModal.classList.remove("open")}
+  function renderCardSettings(){draftCards={...getCards()};draftOrder=[...getOrder()];draftVoiceTimeout=getVoiceResponseTimeout();dirty=false;saveButton.disabled=true;saveButton.classList.remove("jarvisDirty");voiceTimeoutInput.value=String(draftVoiceTimeout);voiceTimeoutValue.textContent=`${draftVoiceTimeout} s`;renderDraftCardSettings()}
+  function moveCard(index,delta){const target=index+delta;if(target<0||target>=draftOrder.length)return;[draftOrder[index],draftOrder[target]]=[draftOrder[target],draftOrder[index]];renderDraftCardSettings();markDirty()}
+  function openAccount(){urlInput.value=getStored(URL_KEY);tokenInput.value=getStored(TOKEN_KEY);document.body.classList.add("jarvisModalOpen");accountModal.classList.add("open");setTimeout(()=>urlInput.focus(),50)}
+  function closeAccount(){accountModal.classList.remove("open");if(!settingsModal.classList.contains("open"))document.body.classList.remove("jarvisModalOpen")}
+  function openSettings(){renderCardSettings();document.body.classList.add("jarvisModalOpen");settingsModal.classList.add("open")}
+  function closeSettings(){settingsModal.classList.remove("open");if(!accountModal.classList.contains("open"))document.body.classList.remove("jarvisModalOpen")}
   accountButton.onclick=openAccount;settingsButton.onclick=openSettings;refreshButton.onclick=()=>location.reload();accountModal.querySelector("#jarvisAccountCancel").onclick=closeAccount;
   voiceTimeoutInput.oninput=()=>{draftVoiceTimeout=Number(voiceTimeoutInput.value);voiceTimeoutValue.textContent=`${draftVoiceTimeout} s`;markDirty()};
-  settingsModal.querySelector("#jarvisSettingsCancel").onclick=()=>{renderCardSettings();closeSettings()};
+  settingsModal.querySelector("#jarvisSettingsCancel").onclick=()=>{closeSettings()};
   saveButton.onclick=()=>{if(!dirty)return;if(saveCards(draftCards)&&saveOrder(draftOrder)&&saveStored(VOICE_TIMEOUT_KEY,draftVoiceTimeout)){applyCardLayout(draftCards,draftOrder);closeSettings()}};
-  accountModal.addEventListener("click",e=>{if(e.target===accountModal)closeAccount()});settingsModal.addEventListener("click",e=>{if(e.target===settingsModal){renderCardSettings();closeSettings()}});
+  accountModal.addEventListener("click",e=>{if(e.target===accountModal)closeAccount()});settingsModal.addEventListener("click",e=>{if(e.target===settingsModal)closeSettings()});
   accountModal.querySelector("#jarvisAccountSave").onclick=()=>{const url=urlInput.value.trim().replace(/\/$/,"");const token=tokenInput.value.trim();if(url&&!/^https?:\/\//i.test(url)){urlInput.focus();return}if(!saveStored(URL_KEY,url)||!saveStored(TOKEN_KEY,token))return;closeAccount();location.reload()};
 
   const root=document.getElementById("jarvisRoot");
