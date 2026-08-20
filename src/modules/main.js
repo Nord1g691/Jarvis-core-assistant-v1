@@ -10,8 +10,22 @@ import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
-// Intentionally empty in the shared repository. Provide a token locally at runtime.
-const TOKEN = "";
+// Token local uniquement : jamais commité dans le dépôt partagé.
+// Pour le développement, définir window.JARVIS_TOKEN avant le chargement de main.js
+// ou enregistrer la valeur dans localStorage sous "jarvis_ha_token".
+function getToken() {
+  const runtimeToken = typeof window.JARVIS_TOKEN === "string"
+    ? window.JARVIS_TOKEN.trim()
+    : "";
+
+  if (runtimeToken) return runtimeToken;
+
+  try {
+    return localStorage.getItem("jarvis_ha_token")?.trim() || "";
+  } catch {
+    return "";
+  }
+}
 
 let connected = false;
 let muted = false;
@@ -85,7 +99,9 @@ function speak(text) {
 }
 
 async function testHA() {
-  if (!TOKEN.trim()) {
+  const token = getToken();
+
+  if (!token) {
     connected = false;
     $("connectionText").textContent = "CONFIGURATION";
     $("connectionStatus")?.classList.remove("online");
@@ -97,7 +113,7 @@ async function testHA() {
   }
 
   $("tokenWarning")?.classList.remove("show");
-  connected = await testHomeAssistant(TOKEN);
+  connected = await testHomeAssistant(token);
   $("connectionText").textContent = connected ? "EN LIGNE" : "HORS LIGNE";
   $("connectionStatus")?.classList.toggle("online", connected);
   $("connectionStatus")?.classList.toggle("offline", !connected);
@@ -107,7 +123,9 @@ async function testHA() {
 }
 
 async function refreshEnergy() {
-  await updateEnergyPanel({ connected, token: TOKEN });
+  const token = getToken();
+  if (!token) return;
+  await updateEnergyPanel({ connected, token });
 }
 
 async function send(text) {
@@ -115,9 +133,10 @@ async function send(text) {
 
   const command = text.trim();
   log(`⌨️ Commande : ${command}`);
+  const token = getToken();
 
   await sendToAssist(command, {
-    token: TOKEN,
+    token,
     connected,
     testHA,
     onSpeech: async speech => speak(speech),
@@ -176,10 +195,11 @@ function stopMusic() {
 }
 
 async function activateSatellite() {
+  const token = getToken();
   if (!connected && !(await testHA())) return;
 
   try {
-    await activateJarvisSatellite(TOKEN, {
+    await activateJarvisSatellite(token, {
       onStateChange: state => {
         setState(state);
         $("micStatus").textContent = state === "listening" ? "ÉCOUTE..." : state.toUpperCase();
