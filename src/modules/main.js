@@ -109,7 +109,12 @@ function finishVoiceResponse(reason = "") {
 }
 
 function speak(text) {
-  if (muted || !window.speechSynthesis) return;
+  if (muted) return;
+  if (!window.speechSynthesis) {
+    logError("Synthèse vocale indisponible : réponse écrite conservée.");
+    finishVoiceResponse("Sortie vocale indisponible — ouverture de la fenêtre d'écoute");
+    return;
+  }
   clearVoiceSafetyTimer();
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text); u.lang = "fr-FR"; u.volume = .75; u.rate = .95; u.pitch = .85;
@@ -117,16 +122,13 @@ function speak(text) {
     setState("responding");
     $("micStatus").textContent = "🔊 JARVIS PARLE...";
     logOK("🔊 Synthèse vocale démarrée.");
-    const timeout = getVoiceResponseTimeout();
-    if (timeout > 0) {
-      voiceSafetyTimer = setTimeout(() => {
-        logError(`⏱️ Sécurité audio : état JARVIS PARLE bloqué, retour après ${timeout}s.`);
-        finishVoiceResponse(`Sécurité audio après ${timeout}s`);
-      }, timeout * 1000);
-    }
   };
   u.onend = () => finishVoiceResponse("Lecture terminée — ouverture de la fenêtre d'écoute");
-  u.onerror = () => { clearVoiceSafetyTimer(); logError("Erreur synthèse vocale : sortie audio refusée par le navigateur."); $("micStatus").textContent = "🔴 AUDIO INDISPONIBLE"; setState("idle"); };
+  u.onerror = () => {
+    clearVoiceSafetyTimer();
+    logError("Erreur synthèse vocale : sortie audio refusée par le navigateur. Réponse écrite conservée.");
+    finishVoiceResponse("Erreur audio — ouverture de la fenêtre d'écoute");
+  };
   window.speechSynthesis.speak(u);
 }
 
