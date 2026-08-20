@@ -1,4 +1,4 @@
-// JARVIS V8.2 — application entry point
+// JARVIS V8.3 — application entry point
 import { $ } from "./dom.js";
 import { setCoreState } from "./core-state.js";
 import { createRecognition, startRecognition, stopRecognition } from "./voice.js";
@@ -10,7 +10,7 @@ import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
-const JARVIS_VERSION = "V8.2";
+const JARVIS_VERSION = "V8.3";
 
 function getToken() {
   const runtimeToken = typeof window.JARVIS_TOKEN === "string" ? window.JARVIS_TOKEN.trim() : "";
@@ -46,10 +46,8 @@ function render() {
 }
 
 function setState(state) { setCoreState(state, music); const systemState = $("systemState"); if (systemState) systemState.textContent = connected ? (state === "idle" ? "ONLINE" : state.toUpperCase()) : "OFFLINE"; }
-
 function speak(text) { if (muted || !window.speechSynthesis) return; window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang="fr-FR"; u.volume=.75; u.rate=.95; u.pitch=.85; u.onstart=()=>{setState("responding");$("micStatus").textContent="JARVIS PARLE..."}; u.onend=async()=>{setState("idle");$("micStatus").textContent="PRÊT";if(!muted&&connected){const r=ensureRecognition();if(r&&!listening)await startRecognition(r)}}; u.onerror=()=>{logError("Erreur synthèse vocale.");setState("idle");$("micStatus").textContent="ERREUR"}; window.speechSynthesis.speak(u); }
-
-async function testHA() { const token=getToken(); if(!token){connected=false;$("systemState").textContent="TOKEN";$("coreState").textContent="CONFIGURATION";$("coreHint").textContent="TOKEN HOME ASSISTANT REQUIS";$("micStatus").textContent="BLOQUÉ";logError("Token Home Assistant requis.");return false;} connected=await testHomeAssistant(token); $("connectionText") && ($("connectionText").textContent=connected?"EN LIGNE":"HORS LIGNE"); $("systemState").textContent=connected?"ONLINE":"OFFLINE"; if(connected){setState("idle");$("micStatus").textContent="PRÊT";$("ci").placeholder="Commande à JARVIS...";}else{$("coreState").textContent="HORS LIGNE";$("coreHint").textContent="CONNEXION HOME ASSISTANT REQUISE";$("micStatus").textContent="BLOQUÉ";} return connected; }
+async function testHA() { const token=getToken(); if(!token){connected=false;$("systemState").textContent="TOKEN";$("coreState").textContent="CONFIGURATION";$("coreHint").textContent="TOKEN HOME ASSISTANT REQUIS";$("micStatus").textContent="BLOQUÉ";logError("Token Home Assistant requis.");return false;} connected=await testHomeAssistant(token); $("systemState").textContent=connected?"ONLINE":"OFFLINE"; if(connected){setState("idle");$("micStatus").textContent="PRÊT";$("ci").placeholder="Commande à JARVIS...";}else{$("coreState").textContent="HORS LIGNE";$("coreHint").textContent="CONNEXION HOME ASSISTANT REQUISE";$("micStatus").textContent="BLOQUÉ";} return connected; }
 async function refreshEnergy(){const token=getToken();if(!token||!connected)return;await updateEnergyPanel({connected,token});}
 async function send(text){if(!text?.trim())return;const command=text.trim();log(`⌨️ Commande : ${command}`);const token=getToken();await sendToAssist(command,{token,connected,testHA,music,onSpeech:async speech=>speak(speech),onNoSpeech:()=>setState("idle")});}
 function ensureRecognition(){if(recognition)return recognition;recognition=createRecognition({music,onListeningChange:value=>{listening=value;if(!value&&$("micStatus")?.textContent==="ÉCOUTE...")$("micStatus").textContent="PRÊT"},onTranscript:transcript=>send(transcript)});return recognition;}
@@ -57,13 +55,6 @@ async function toggleVoice(){if(muted)return;const r=ensureRecognition();if(!r)r
 function updateMusicUI(){const track=music?.getTrack?.();const player=music?.player;$("musicName").textContent=track?.name||"Aucun morceau";$("musicStatus").textContent=player?.paused?(track?"PAUSE":"ARRÊTÉE"):track?"LECTURE":"ARRÊTÉE";$("playBtn").textContent=player?.paused?"▶":track?"⏸":"▶";}
 async function toggleMusic(){await music?.toggle?.();updateMusicUI();} function stopMusic(){music?.stop?.();updateMusicUI();}
 async function activateSatellite(){const token=getToken();if(!connected&&!(await testHA()))return;try{await activateJarvisSatellite(token,{music,onStateChange:state=>{setState(state);$("micStatus").textContent=state==="listening"?"ÉCOUTE...":state.toUpperCase()}})}catch(error){logError(`Satellite : ${error.message}`)}}
-
-function bind(){
-  $("sendBtn").onclick=async()=>{if(!connected&&!(await testHA()))return;const input=$("ci");const text=input.value;input.value="";await send(text)}; $("ci").onkeydown=e=>{if(e.key==="Enter")$("sendBtn").click()}; $("voiceBtn").onclick=toggleVoice;$("tapZone").onclick=toggleVoice;$("testBtn").onclick=testHA;$("satelliteBtn").onclick=activateSatellite;
-  $("muteBtn").onclick=()=>{muted=!muted;if(muted){stopRecognition(recognition);window.speechSynthesis?.cancel();stopMusic();$("muteBtn").textContent="🔊 ACTIVER";$("micStatus").textContent="COUPÉ";setState("idle");log("🔇 Audio désactivé.")}else{$("muteBtn").textContent="🔇 MUTE";$("micStatus").textContent=connected?"PRÊT":"BLOQUÉ";logOK("🔊 Audio réactivé.")}};
-  $("playBtn").onclick=toggleMusic;$("stopBtn").onclick=stopMusic;$("prevBtn").onclick=()=>music?.previous?.().then(updateMusicUI);$("nextBtn").onclick=()=>music?.next?.().then(updateMusicUI);$("musicVolume").oninput=e=>{music?.setVolume?.(e.target.value);$("musicVolumeLabel").textContent=`${e.target.value}%`};
-  $("clearBtn").onclick=()=>{$("co").innerHTML=""}; $("copyLogsBtn").onclick=async()=>{const text=$("co")?.innerText||"";try{await navigator.clipboard.writeText(text);logOK("📋 Logs copiés dans le presse-papiers.")}catch{logError("Impossible de copier les logs.")}};
-  document.querySelectorAll("[data-state]").forEach(btn=>{btn.onclick=()=>setState(btn.dataset.state)});
-}
+function bind(){ $("sendBtn").onclick=async()=>{if(!connected&&!(await testHA()))return;const input=$("ci");const text=input.value;input.value="";await send(text)}; $("ci").onkeydown=e=>{if(e.key==="Enter")$("sendBtn").click()}; $("voiceBtn").onclick=toggleVoice;$("tapZone").onclick=toggleVoice;$("testBtn").onclick=testHA;$("satelliteBtn").onclick=activateSatellite; $("muteBtn").onclick=()=>{muted=!muted;if(muted){stopRecognition(recognition);window.speechSynthesis?.cancel();stopMusic();$("muteBtn").textContent="🔊 ACTIVER";$("micStatus").textContent="COUPÉ";setState("idle");log("🔇 Audio désactivé.")}else{$("muteBtn").textContent="🔇 MUTE";$("micStatus").textContent=connected?"PRÊT":"BLOQUÉ";logOK("🔊 Audio réactivé.")}}; $("playBtn").onclick=toggleMusic;$("stopBtn").onclick=stopMusic;$("prevBtn").onclick=()=>music?.previous?.().then(updateMusicUI);$("nextBtn").onclick=()=>music?.next?.().then(updateMusicUI);$("musicVolume").oninput=e=>{music?.setVolume?.(e.target.value);$("musicVolumeLabel").textContent=`${e.target.value}%`}; $("clearBtn").onclick=()=>{$("co").innerHTML=""}; $("copyLogsBtn").onclick=async()=>{const text=$("co")?.innerText||"";try{await navigator.clipboard.writeText(text);logOK("📋 Logs copiés dans le presse-papiers.")}catch{logError("Impossible de copier les logs.")}}; document.querySelectorAll("[data-state]").forEach(btn=>{btn.onclick=()=>setState(btn.dataset.state)}); }
 export function initJarvis(){render();music=createMusicController({playlist:JARVIS_MUSIC,duckFactor:MUSIC_DUCK_FACTOR});bind();log(`🤖 JARVIS ${JARVIS_VERSION} — version test`);setState("idle");testHA();refreshEnergy();setInterval(refreshEnergy,5000)}
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",initJarvis,{once:true});else initJarvis();
