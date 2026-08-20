@@ -9,7 +9,13 @@ function getStored(key) {
 }
 
 function saveStored(key, value) {
-  try { localStorage.setItem(key, value); return true; } catch { return false; }
+  try {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function installSettingsUI() {
@@ -74,12 +80,8 @@ function installSettingsUI() {
     const url = urlInput.value.trim().replace(/\/$/, "");
     const token = tokenInput.value.trim();
 
-    if (!url || !/^https?:\/\//i.test(url)) {
+    if (url && !/^https?:\/\//i.test(url)) {
       urlInput.focus();
-      return;
-    }
-    if (!token) {
-      tokenInput.focus();
       return;
     }
 
