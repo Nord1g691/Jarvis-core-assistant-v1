@@ -8,7 +8,7 @@ import { updateEnergyPanel } from "./energy.js";
 import { createMusicController } from "./music.js";
 import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
-import { HA_URL, JARVIS_SATELLITE, JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
+import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
 // Intentionally empty in the shared repository. Provide a token locally at runtime.
 const TOKEN = "";
@@ -120,7 +120,7 @@ async function send(text) {
     token: TOKEN,
     connected,
     testHA,
-    onSpeech: async (speech) => speak(speech),
+    onSpeech: async speech => speak(speech),
     onNoSpeech: () => setState("idle")
   });
 }
@@ -159,19 +159,14 @@ async function toggleVoice() {
 
 function updateMusicUI() {
   const track = music?.getTrack?.();
+  const player = music?.player;
   $("musicName").textContent = track?.name || "Aucun morceau";
-  $("musicStatus").textContent = music?.player?.paused ? "PAUSE" : track ? "LECTURE" : "ARRÊTÉE";
-  $("playBtn").textContent = music?.player?.paused ? "▶" : track ? "⏸" : "▶";
+  $("musicStatus").textContent = player?.paused ? (track ? "PAUSE" : "ARRÊTÉE") : track ? "LECTURE" : "ARRÊTÉE";
+  $("playBtn").textContent = player?.paused ? "▶" : track ? "⏸" : "▶";
 }
 
 async function toggleMusic() {
   await music?.toggle?.();
-  updateMusicUI();
-}
-
-async function playMusic(index) {
-  await music?.player?.pause?.();
-  await music?.next?.();
   updateMusicUI();
 }
 
