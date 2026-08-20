@@ -86,9 +86,16 @@ function speak(text) {
     setState("responding");
     $("micStatus").textContent = "JARVIS PARLE...";
   };
-  u.onend = () => {
+  u.onend = async () => {
     setState("idle");
     $("micStatus").textContent = "PRÊT";
+
+    if (!muted && connected) {
+      const r = ensureRecognition();
+      if (r && !listening) {
+        await startRecognition(r);
+      }
+    }
   };
   u.onerror = () => {
     logError("Erreur synthèse vocale.");
