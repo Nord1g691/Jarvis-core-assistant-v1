@@ -10,11 +10,12 @@ export async function sendToAssist(text, {
   connected,
   testHA,
   onSpeech,
-  onNoSpeech
+  onNoSpeech,
+  music
 } = {}) {
   if (!text) return null;
 
-  setCoreState("processing");
+  setCoreState("processing", music);
 
   try {
     let ready = connected;
@@ -41,7 +42,7 @@ export async function sendToAssist(text, {
 
     if (speech) {
       logOK(`🤖 JARVIS : "${speech}"`);
-      setCoreState("responding");
+      setCoreState("responding", music);
       await onSpeech?.(speech);
       return speech;
     }
@@ -49,7 +50,7 @@ export async function sendToAssist(text, {
     await onNoSpeech?.();
     return null;
   } catch (error) {
-    setCoreState("idle");
+    setCoreState("idle", music);
     logError(`Erreur Assist : ${error.message}`);
     return null;
   }
