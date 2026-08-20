@@ -4,7 +4,7 @@ import { $ } from "./dom.js";
 import { log, logError } from "./logger.js";
 import { setCoreState } from "./core-state.js";
 
-export function createRecognition({ onTranscript, onListeningChange } = {}) {
+export function createRecognition({ onTranscript, onListeningChange, music } = {}) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
@@ -21,7 +21,7 @@ export function createRecognition({ onTranscript, onListeningChange } = {}) {
 
   recognition.onstart = () => {
     onListeningChange?.(true);
-    setCoreState("listening");
+    setCoreState("listening", music);
     $("micStatus")?.replaceChildren(document.createTextNode("ÉCOUTE..."));
     $("voiceBtn")?.replaceChildren(document.createTextNode("⏹ ARRÊTER"));
     log("🎙️ JARVIS écoute...");
