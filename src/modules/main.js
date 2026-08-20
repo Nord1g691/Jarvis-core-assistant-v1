@@ -139,6 +139,7 @@ async function send(text) {
     token,
     connected,
     testHA,
+    music,
     onSpeech: async speech => speak(speech),
     onNoSpeech: () => setState("idle")
   });
@@ -148,6 +149,7 @@ function ensureRecognition() {
   if (recognition) return recognition;
 
   recognition = createRecognition({
+    music,
     onListeningChange: value => {
       listening = value;
       if (!value && $("micStatus")?.textContent === "ÉCOUTE...") {
