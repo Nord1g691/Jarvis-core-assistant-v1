@@ -1,6 +1,6 @@
 // JARVIS V8 — Background music controller
 
-import { log, logOK, logError, logWarn } from "./logger.js";
+import { log, logOK, logError, logWarning } from "./logger.js";
 
 const DEFAULT_PLAYLIST = [
   { name: "Thunderstruck", file: "music/thunderstruck.mp3" },
@@ -64,7 +64,7 @@ export function createMusicController({ playlist = DEFAULT_PLAYLIST, duckFactor 
       logOK(`🎵 Lecture fond : ${track.name}`);
       return true;
     } catch {
-      logWarn("🎵 Lecture bloquée : appui utilisateur requis.");
+      logWarning("🎵 Lecture bloquée : appui utilisateur requis.");
       return false;
     }
   };
