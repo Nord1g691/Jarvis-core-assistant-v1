@@ -1,4 +1,4 @@
-// JARVIS V8.4 — Voice recognition helpers
+// JARVIS V8.5 — Voice recognition helpers
 
 import { $ } from "./dom.js";
 import { log, logError } from "./logger.js";
@@ -8,7 +8,7 @@ export function createRecognition({ onTranscript, onListeningChange, music } = {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    $("micStatus")?.replaceChildren(document.createTextNode("INDISPONIBLE"));
+    $("micStatus")?.replaceChildren(document.createTextNode("SERVICE VOCAL INDISPONIBLE"));
     logError("Reconnaissance vocale indisponible dans ce navigateur.");
     return null;
   }
@@ -48,14 +48,22 @@ export function createRecognition({ onTranscript, onListeningChange, music } = {
       "no-speech": "Aucune parole détectée.",
       "aborted": "Écoute interrompue."
     };
-    $("micStatus")?.replaceChildren(document.createTextNode(error === "not-allowed" ? "MICRO REFUSÉ" : "ERREUR MICRO"));
+    const status = {
+      "not-allowed": "MICRO REFUSÉ",
+      "service-not-allowed": "SERVICE VOCAL INDISPONIBLE",
+      "audio-capture": "MICRO INDISPONIBLE",
+      "network": "SERVICE VOCAL INDISPONIBLE",
+      "no-speech": "AUCUNE PAROLE",
+      "aborted": "ÉCOUTE INTERROMPUE"
+    };
+    $("micStatus")?.replaceChildren(document.createTextNode(status[error] || "ERREUR MICRO"));
     logError(`Erreur micro : ${messages[error] || error}`);
   };
 
   recognition.onend = () => {
     onListeningChange?.(false);
     $("voiceBtn")?.replaceChildren(document.createTextNode("🎤 ÉCOUTER"));
-    if ($("micStatus")?.textContent === "ÉCOUTE...") $("micStatus").replaceChildren(document.createTextNode("PRÊT"));
+    if ($("micStatus")?.textContent === "ÉCOUTE...") $("micStatus").replaceChildren(document.createTextNode("SERVICE VOCAL À TESTER"));
   };
 
   return recognition;
@@ -63,6 +71,7 @@ export function createRecognition({ onTranscript, onListeningChange, music } = {
 
 export async function requestMicrophonePermission() {
   if (!navigator.mediaDevices?.getUserMedia) {
+    $("micStatus")?.replaceChildren(document.createTextNode("MICRO INDISPONIBLE"));
     logError("Ce navigateur ne permet pas de vérifier l'accès au microphone.");
     return false;
   }
@@ -87,7 +96,8 @@ export async function startRecognition(recognition) {
     recognition.start();
     return true;
   } catch (error) {
-    logError(`Impossible de démarrer le micro : ${error?.message || "erreur inconnue"}.`);
+    $("micStatus")?.replaceChildren(document.createTextNode("SERVICE VOCAL INDISPONIBLE"));
+    logError(`Impossible de démarrer le service vocal : ${error?.message || "erreur inconnue"}.`);
     return false;
   }
 }
