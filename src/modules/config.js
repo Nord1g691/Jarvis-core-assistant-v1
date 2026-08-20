@@ -3,7 +3,7 @@
 
 // GitHub Pages cannot infer the Home Assistant server from window.location.origin.
 // Configure it at runtime with window.JARVIS_HA_URL or localStorage key "jarvis_ha_url".
-function getHAUrl() {
+export function getHAUrl() {
   const runtimeUrl = typeof window.JARVIS_HA_URL === "string"
     ? window.JARVIS_HA_URL.trim()
     : "";
@@ -13,9 +13,7 @@ function getHAUrl() {
   try {
     const storedUrl = localStorage.getItem("jarvis_ha_url")?.trim() || "";
     if (storedUrl) return storedUrl.replace(/\/$/, "");
-  } catch {
-    // localStorage may be unavailable in private/restricted contexts.
-  }
+  } catch {}
 
   return "";
 }
