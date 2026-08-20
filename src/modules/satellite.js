@@ -1,11 +1,53 @@
 // JARVIS V8 — Assist Satellite iPhone
 
 import { JARVIS_SATELLITE, HA_URL } from "./config.js";
+import { getEntityState } from "./ha.js";
 import { log, logError, logOK } from "./logger.js";
 import { setCoreState } from "./core-state.js";
 
 function getWebSocketURL() {
   return HA_URL.replace(/^https:/, "wss:").replace(/^http:/, "ws:") + "/api/websocket";
+}
+
+function monitorSatellite(token, onStateChange) {
+  let stopped = false;
+  let lastState = "";
+  let checks = 0;
+
+  const stop = () => {
+    stopped = true;
+  };
+
+  const poll = async () => {
+    if (stopped || checks++ >= 120) return;
+
+    try {
+      const data = await getEntityState(JARVIS_SATELLITE, token);
+      const state = data?.state;
+
+      if (state && state !== lastState) {
+        lastState = state;
+
+        if (["listening", "processing", "responding"].includes(state)) {
+          setCoreState(state);
+          onStateChange?.(state);
+        } else if (["idle", "off", "unavailable", "unknown"].includes(state)) {
+          setCoreState("idle");
+          onStateChange?.("idle");
+          stop();
+          return;
+        }
+      }
+    } catch (error) {
+      // A transient state-read failure must not kill the active satellite session.
+      log(`Satellite HUD : ${error.message}`);
+    }
+
+    if (!stopped) setTimeout(poll, 500);
+  };
+
+  poll();
+  return stop;
 }
 
 export function activateJarvisSatellite(token, { onStateChange } = {}) {
@@ -51,6 +93,7 @@ export function activateJarvisSatellite(token, { onStateChange } = {}) {
           logOK("🎙️ JARVIS iPhone activé.");
           setCoreState("listening");
           onStateChange?.("listening");
+          monitorSatellite(token, onStateChange);
           resolve(true);
         } else {
           logError("Activation du satellite refusée.");
