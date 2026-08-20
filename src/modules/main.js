@@ -86,8 +86,26 @@ function setConnectionVisual(ok) {
 
 function finishVoiceResponse(reason = "") {
   clearVoiceSafetyTimer();
-  if (reason) log(`🔊 Retour à l'état prêt : ${reason}.`);
-  setState("idle");
+  if (reason) log(`🔊 ${reason}.`);
+  if (muted || !connected) { setState("idle"); return; }
+  const timeout = getVoiceResponseTimeout();
+  const r = ensureRecognition();
+  if (r && !listening) {
+    setState("listening");
+    $("micStatus").textContent = "🎙️ JARVIS ÉCOUTE...";
+    startRecognition(r).catch(error => {
+      logError(`Erreur reprise écoute : ${error.message}`);
+      setState("idle");
+    });
+  }
+  if (timeout > 0) {
+    voiceSafetyTimer = setTimeout(() => {
+      if (listening && recognition) stopRecognition(recognition);
+      log(`⏱️ Fin de la fenêtre d'écoute automatique après ${timeout}s.`);
+      setState("idle");
+      $("micStatus").textContent = "SERVICE VOCAL À TESTER";
+    }, timeout * 1000);
+  }
 }
 
 function speak(text) {
@@ -103,14 +121,11 @@ function speak(text) {
     if (timeout > 0) {
       voiceSafetyTimer = setTimeout(() => {
         logError(`⏱️ Sécurité audio : état JARVIS PARLE bloqué, retour après ${timeout}s.`);
-        finishVoiceResponse(`timeout ${timeout}s`);
+        finishVoiceResponse(`Sécurité audio après ${timeout}s`);
       }, timeout * 1000);
     }
   };
-  u.onend = async () => {
-    finishVoiceResponse("lecture terminée");
-    if (!muted && connected) { const r = ensureRecognition(); if (r && !listening) await startRecognition(r); }
-  };
+  u.onend = () => finishVoiceResponse("Lecture terminée — ouverture de la fenêtre d'écoute");
   u.onerror = () => { clearVoiceSafetyTimer(); logError("Erreur synthèse vocale : sortie audio refusée par le navigateur."); $("micStatus").textContent = "🔴 AUDIO INDISPONIBLE"; setState("idle"); };
   window.speechSynthesis.speak(u);
 }
