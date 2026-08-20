@@ -1,7 +1,7 @@
-// JARVIS V8 — Conversation engine
+// JARVIS V8.3 — Conversation engine
 
 import { JARVIS_AGENT } from "./config.js";
-import { haFetch } from "./ha.js";
+import { haWsCall } from "./ha.js";
 import { log, logError, logOK } from "./logger.js";
 import { setCoreState } from "./core-state.js";
 
@@ -14,7 +14,6 @@ export async function sendToAssist(text, {
   music
 } = {}) {
   if (!text) return null;
-
   setCoreState("processing", music);
 
   try {
@@ -22,24 +21,15 @@ export async function sendToAssist(text, {
     if (!ready && testHA) ready = await testHA();
     if (!ready) return null;
 
-    log("⚡ Transmission à JARVIS...");
+    log("⚡ Transmission à JARVIS via WebSocket...");
 
-    const response = await haFetch(
-      "/api/conversation/process",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          text,
-          language: "fr",
-          agent_id: JARVIS_AGENT
-        })
-      },
-      token
-    );
+    const data = await haWsCall("conversation/process", {
+      text,
+      language: "fr",
+      agent_id: JARVIS_AGENT
+    }, token);
 
-    const data = await response.json();
     const speech = data?.response?.speech?.plain?.speech;
-
     if (speech) {
       logOK(`🤖 JARVIS : "${speech}"`);
       setCoreState("responding", music);
