@@ -1,0 +1,10 @@
+/* JARVIS V8.9.1 — interface-anchored floating controls */
+#app{position:relative}
+.jarvisTopIcon,.jarvisRefreshButton{position:absolute!important;right:12px!important;z-index:100!important}
+.jarvisTopIcon{top:max(12px,env(safe-area-inset-top))!important}
+#jarvisSettingsButton{top:max(54px,calc(env(safe-area-inset-top) + 46px))!important}
+.jarvisRefreshButton{top:max(96px,calc(env(safe-area-inset-top) + 88px))!important}
+#jarvisRoot{position:relative}
+#jarvisRoot>div:last-child{position:absolute!important;right:8px!important;bottom:6px!important;z-index:20!important;font-size:0!important}
+#jarvisRoot>div:last-child::after{content:"JARVIS V8.9.1";font-size:8px;opacity:.65}
+body.jarvisModalOpen .jarvisTopIcon,body.jarvisModalOpen .jarvisRefreshButton{display:none!important}
