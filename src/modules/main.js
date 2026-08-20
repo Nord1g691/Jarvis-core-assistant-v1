@@ -1,7 +1,7 @@
-// JARVIS V8.3 — application entry point
+// JARVIS V8.4 — application entry point
 import { $ } from "./dom.js";
 import { setCoreState } from "./core-state.js";
-import { createRecognition, startRecognition, stopRecognition } from "./voice.js";
+import { createRecognition, requestMicrophonePermission, startRecognition, stopRecognition } from "./voice.js";
 import { sendToAssist } from "./assist.js";
 import { testHomeAssistant } from "./ha.js";
 import { updateEnergyPanel } from "./energy.js";
@@ -10,7 +10,7 @@ import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
-const JARVIS_VERSION = "V8.3";
+const JARVIS_VERSION = "V8.4";
 
 function getToken() {
   const runtimeToken = typeof window.JARVIS_TOKEN === "string" ? window.JARVIS_TOKEN.trim() : "";
@@ -51,7 +51,15 @@ async function testHA() { const token=getToken(); if(!token){connected=false;$("
 async function refreshEnergy(){const token=getToken();if(!token||!connected)return;await updateEnergyPanel({connected,token});}
 async function send(text){if(!text?.trim())return;const command=text.trim();log(`⌨️ Commande : ${command}`);const token=getToken();await sendToAssist(command,{token,connected,testHA,music,onSpeech:async speech=>speak(speech),onNoSpeech:()=>setState("idle")});}
 function ensureRecognition(){if(recognition)return recognition;recognition=createRecognition({music,onListeningChange:value=>{listening=value;if(!value&&$("micStatus")?.textContent==="ÉCOUTE...")$("micStatus").textContent="PRÊT"},onTranscript:transcript=>send(transcript)});return recognition;}
-async function toggleVoice(){if(muted)return;const r=ensureRecognition();if(!r)return;if(listening){stopRecognition(r);setState("idle");return}if(!connected&&!(await testHA()))return;await startRecognition(r);}
+async function toggleVoice(){
+  if(muted)return;
+  if(!connected&&!(await testHA()))return;
+  const r=ensureRecognition();
+  if(!r)return;
+  if(listening){stopRecognition(r);setState("idle");return;}
+  if(!(await requestMicrophonePermission()))return;
+  await startRecognition(r);
+}
 function updateMusicUI(){const track=music?.getTrack?.();const player=music?.player;$("musicName").textContent=track?.name||"Aucun morceau";$("musicStatus").textContent=player?.paused?(track?"PAUSE":"ARRÊTÉE"):track?"LECTURE":"ARRÊTÉE";$("playBtn").textContent=player?.paused?"▶":track?"⏸":"▶";}
 async function toggleMusic(){await music?.toggle?.();updateMusicUI();} function stopMusic(){music?.stop?.();updateMusicUI();}
 async function activateSatellite(){const token=getToken();if(!connected&&!(await testHA()))return;try{await activateJarvisSatellite(token,{music,onStateChange:state=>{setState(state);$("micStatus").textContent=state==="listening"?"ÉCOUTE...":state.toUpperCase()}})}catch(error){logError(`Satellite : ${error.message}`)}}
