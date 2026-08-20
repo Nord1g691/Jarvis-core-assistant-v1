@@ -9,7 +9,7 @@ function getWebSocketURL() {
   return HA_URL.replace(/^https:/, "wss:").replace(/^http:/, "ws:") + "/api/websocket";
 }
 
-function monitorSatellite(token, onStateChange) {
+function monitorSatellite(token, { onStateChange, music } = {}) {
   let stopped = false;
   let lastState = "";
   let checks = 0;
@@ -29,10 +29,10 @@ function monitorSatellite(token, onStateChange) {
         lastState = state;
 
         if (["listening", "processing", "responding"].includes(state)) {
-          setCoreState(state);
+          setCoreState(state, music);
           onStateChange?.(state);
         } else if (["idle", "off", "unavailable", "unknown"].includes(state)) {
-          setCoreState("idle");
+          setCoreState("idle", music);
           onStateChange?.("idle");
           stop();
           return;
@@ -50,7 +50,7 @@ function monitorSatellite(token, onStateChange) {
   return stop;
 }
 
-export function activateJarvisSatellite(token, { onStateChange } = {}) {
+export function activateJarvisSatellite(token, { onStateChange, music } = {}) {
   return new Promise((resolve, reject) => {
     if (!token?.trim()) {
       logError("Token Home Assistant requis pour le satellite.");
@@ -91,9 +91,9 @@ export function activateJarvisSatellite(token, { onStateChange } = {}) {
       if (msg.type === "result") {
         if (msg.success) {
           logOK("🎙️ JARVIS iPhone activé.");
-          setCoreState("listening");
+          setCoreState("listening", music);
           onStateChange?.("listening");
-          monitorSatellite(token, onStateChange);
+          monitorSatellite(token, { onStateChange, music });
           resolve(true);
         } else {
           logError("Activation du satellite refusée.");
