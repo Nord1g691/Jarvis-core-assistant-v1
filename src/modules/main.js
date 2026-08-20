@@ -1,4 +1,4 @@
-// JARVIS V8.7 — application entry point
+// JARVIS V8.8 — application entry point
 import { $ } from "./dom.js";
 import { setCoreState } from "./core-state.js";
 import { createRecognition, requestMicrophonePermission, startRecognition, stopRecognition } from "./voice.js";
@@ -10,7 +10,7 @@ import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
-const JARVIS_VERSION = "V8.7";
+const JARVIS_VERSION = "V8.8";
 
 function getToken() {
   const runtimeToken = typeof window.JARVIS_TOKEN === "string" ? window.JARVIS_TOKEN.trim() : "";
