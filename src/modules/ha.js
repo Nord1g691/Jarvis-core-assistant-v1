@@ -1,9 +1,12 @@
 // JARVIS V8 — Home Assistant API helpers
 
-import { HA_URL } from "./config.js";
+import { getHAUrl } from "./config.js";
 import { log, logError, logOK, logWarning } from "./logger.js";
 
 export async function haFetch(path, options = {}, token = "") {
+  const baseUrl = getHAUrl();
+  if (!baseUrl) throw new Error("URL Home Assistant non configurée");
+
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {})
@@ -13,7 +16,7 @@ export async function haFetch(path, options = {}, token = "") {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${HA_URL}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers
   });
