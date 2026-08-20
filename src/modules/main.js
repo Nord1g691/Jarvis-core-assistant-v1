@@ -8,6 +8,7 @@ import { updateEnergyPanel } from "./energy.js";
 import { createMusicController } from "./music.js";
 import { activateJarvisSatellite } from "./satellite.js";
 import { log, logError, logOK } from "./logger.js";
+import { getVoiceResponseTimeout } from "./settings.js";
 import { JARVIS_MUSIC, MUSIC_DUCK_FACTOR } from "./config.js";
 
 const JARVIS_VERSION = "V8.9";
@@ -23,6 +24,11 @@ let muted = false;
 let listening = false;
 let recognition = null;
 let music = null;
+let voiceSafetyTimer = null;
+
+function clearVoiceSafetyTimer() {
+  if (voiceSafetyTimer) { clearTimeout(voiceSafetyTimer); voiceSafetyTimer = null; }
+}
 
 function render() {
   const root = $("jarvisRoot");
@@ -78,13 +84,34 @@ function setConnectionVisual(ok) {
   }
 }
 
+function finishVoiceResponse(reason = "") {
+  clearVoiceSafetyTimer();
+  if (reason) log(`🔊 Retour à l'état prêt : ${reason}.`);
+  setState("idle");
+}
+
 function speak(text) {
   if (muted || !window.speechSynthesis) return;
+  clearVoiceSafetyTimer();
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text); u.lang = "fr-FR"; u.volume = .75; u.rate = .95; u.pitch = .85;
-  u.onstart = () => { setState("responding"); $("micStatus").textContent = "🔊 JARVIS PARLE..."; logOK("🔊 Synthèse vocale démarrée."); };
-  u.onend = async () => { logOK("🔊 Audio terminé."); setState("idle"); if (!muted && connected) { const r = ensureRecognition(); if (r && !listening) await startRecognition(r); } };
-  u.onerror = () => { logError("Erreur synthèse vocale : sortie audio refusée par le navigateur."); $("micStatus").textContent = "🔴 AUDIO INDISPONIBLE"; setState("idle"); };
+  u.onstart = () => {
+    setState("responding");
+    $("micStatus").textContent = "🔊 JARVIS PARLE...";
+    logOK("🔊 Synthèse vocale démarrée.");
+    const timeout = getVoiceResponseTimeout();
+    if (timeout > 0) {
+      voiceSafetyTimer = setTimeout(() => {
+        logError(`⏱️ Sécurité audio : état JARVIS PARLE bloqué, retour après ${timeout}s.`);
+        finishVoiceResponse(`timeout ${timeout}s`);
+      }, timeout * 1000);
+    }
+  };
+  u.onend = async () => {
+    finishVoiceResponse("lecture terminée");
+    if (!muted && connected) { const r = ensureRecognition(); if (r && !listening) await startRecognition(r); }
+  };
+  u.onerror = () => { clearVoiceSafetyTimer(); logError("Erreur synthèse vocale : sortie audio refusée par le navigateur."); $("micStatus").textContent = "🔴 AUDIO INDISPONIBLE"; setState("idle"); };
   window.speechSynthesis.speak(u);
 }
 
@@ -112,6 +139,6 @@ async function toggleVoice(){if(muted)return;if(!connected&&!(await testHA()))re
 function updateMusicUI(){const track=music?.getTrack?.();const player=music?.player;$("musicName").textContent=track?.name||"Aucun morceau";$("musicStatus").textContent=player?.paused?(track?"PAUSE":"ARRÊTÉE"):track?"LECTURE":"ARRÊTÉE";$("playBtn").textContent=player?.paused?"▶":track?"⏸":"▶";}
 async function toggleMusic(){await music?.toggle?.();updateMusicUI();} function stopMusic(){music?.stop?.();updateMusicUI();}
 async function activateSatellite(){const token=getToken();if(!connected&&!(await testHA()))return;try{await activateJarvisSatellite(token,{music,onStateChange:state=>{setState(state);$("micStatus").textContent=state==="listening"?"ÉCOUTE...":state.toUpperCase()}})}catch(error){logError(`Satellite : ${error.message}`)}}
-function bind(){ $("sendBtn").onclick=async()=>{if(!connected&&!(await testHA()))return;const input=$("ci");const text=input.value;input.value="";await send(text)};$("ci").onkeydown=e=>{if(e.key==="Enter")$("sendBtn").click()};$("voiceBtn").onclick=toggleVoice;$("tapZone").onclick=toggleVoice;$("testBtn").onclick=testHA;$("satelliteBtn").onclick=activateSatellite;$("muteBtn").onclick=()=>{muted=!muted;if(muted){stopRecognition(recognition);window.speechSynthesis?.cancel();stopMusic();$("muteBtn").textContent="🔊 ACTIVER";$("micStatus").textContent="COUPÉ";setState("idle");log("🔇 Audio désactivé.")}else{$("muteBtn").textContent="🔇 MUTE";$("micStatus").textContent=connected?"SERVICE VOCAL À TESTER":"BLOQUÉ";logOK("🔊 Audio réactivé.")}};$("playBtn").onclick=toggleMusic;$("stopBtn").onclick=stopMusic;$("prevBtn").onclick=()=>music?.previous?.().then(updateMusicUI);$("nextBtn").onclick=()=>music?.next?.().then(updateMusicUI);$("musicVolume").oninput=e=>{music?.setVolume?.(e.target.value);$("musicVolumeLabel").textContent=`${e.target.value}%`};$("clearBtn").onclick=()=>{$("co").innerHTML=""};$("copyLogsBtn").onclick=async()=>{const text=$("co")?.innerText||"";try{await navigator.clipboard.writeText(text);logOK("📋 Logs copiés dans le presse-papiers.")}catch{logError("Impossible de copier les logs.")}};document.querySelectorAll("[data-state]").forEach(btn=>{btn.onclick=()=>setState(btn.dataset.state)});}
+function bind(){ $("sendBtn").onclick=async()=>{if(!connected&&!(await testHA()))return;const input=$("ci");const text=input.value;input.value="";await send(text)};$("ci").onkeydown=e=>{if(e.key==="Enter")$("sendBtn").click()};$("voiceBtn").onclick=toggleVoice;$("tapZone").onclick=toggleVoice;$("testBtn").onclick=testHA;$("satelliteBtn").onclick=activateSatellite;$("muteBtn").onclick=()=>{muted=!muted;if(muted){clearVoiceSafetyTimer();stopRecognition(recognition);window.speechSynthesis?.cancel();stopMusic();$("muteBtn").textContent="🔊 ACTIVER";$("micStatus").textContent="COUPÉ";setState("idle");log("🔇 Audio désactivé.")}else{$("muteBtn").textContent="🔇 MUTE";$("micStatus").textContent=connected?"SERVICE VOCAL À TESTER":"BLOQUÉ";logOK("🔊 Audio réactivé.")}};$("playBtn").onclick=toggleMusic;$("stopBtn").onclick=stopMusic;$("prevBtn").onclick=()=>music?.previous?.().then(updateMusicUI);$("nextBtn").onclick=()=>music?.next?.().then(updateMusicUI);$("musicVolume").oninput=e=>{music?.setVolume?.(e.target.value);$("musicVolumeLabel").textContent=`${e.target.value}%`};$("clearBtn").onclick=()=>{$("co").innerHTML=""};$("copyLogsBtn").onclick=async()=>{const text=$("co")?.innerText||"";try{await navigator.clipboard.writeText(text);logOK("📋 Logs copiés dans le presse-papiers.")}catch{logError("Impossible de copier les logs.")}};document.querySelectorAll("[data-state]").forEach(btn=>{btn.onclick=()=>setState(btn.dataset.state)});}
 export function initJarvis(){render();music=createMusicController({playlist:JARVIS_MUSIC,duckFactor:MUSIC_DUCK_FACTOR});bind();log(`🤖 JARVIS ${JARVIS_VERSION} — version test`);setState("idle");testHA();refreshEnergy();setInterval(refreshEnergy,5000)}
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",initJarvis,{once:true});else initJarvis();
