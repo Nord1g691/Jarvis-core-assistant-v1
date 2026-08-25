@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "JARVIS",
+        "description": "Configure the JARVIS AI layer. Home Assistant authentication is handled by the native panel.",
+        "data": {
+          "provider": "AI provider",
+          "model": "Model",
+          "base_url": "Local/custom base URL",
+          "api_key": "API key",
+          "observer_enabled": "Observer mode",
+          "rich_reasoning": "Rich reasoning",
+          "visitor_learning": "Visitor learning",
+          "package_detection": "Package detection"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "JARVIS options",
+        "data": {
+          "observer_enabled": "Observer mode",
+          "rich_reasoning": "Rich reasoning",
+          "visitor_learning": "Visitor learning",
+          "package_detection": "Package detection",
+          "dashboard_layout": "Dashboard layout"
+        }
+      }
+    }
+  }
+}
