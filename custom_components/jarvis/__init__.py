@@ -14,12 +14,10 @@ from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up JARVIS as a native Home Assistant panel."""
     hass.data.setdefault(DOMAIN, {})
-
     static_path = Path(__file__).parent / "www"
     await hass.http.async_register_static_paths(
         [StaticPathConfig(STATIC_URL, str(static_path), cache_headers=False)]
     )
-
     frontend.async_remove_panel(hass, PANEL_URL)
     frontend.async_register_built_in_panel(
         hass,
