@@ -1,0 +1,34 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "JARVIS",
+        "description": "Configure la couche IA de JARVIS. L'authentification Home Assistant est gérée nativement par le panneau.",
+        "data": {
+          "provider": "Fournisseur IA",
+          "model": "Modèle",
+          "base_url": "URL locale/personnalisée",
+          "api_key": "Clé API",
+          "observer_enabled": "Mode observateur",
+          "rich_reasoning": "Raisonnement avancé",
+          "visitor_learning": "Apprentissage visiteurs",
+          "package_detection": "Détection colis"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options JARVIS",
+        "data": {
+          "observer_enabled": "Mode observateur",
+          "rich_reasoning": "Raisonnement avancé",
+          "visitor_learning": "Apprentissage visiteurs",
+          "package_detection": "Détection colis",
+          "dashboard_layout": "Disposition du tableau de bord"
+        }
+      }
+    }
+  }
+}
