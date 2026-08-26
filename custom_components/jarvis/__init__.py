@@ -10,6 +10,8 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
 
+PANEL_VERSION = "10.0.1"
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up JARVIS as a native Home Assistant panel."""
@@ -28,9 +30,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         require_admin=False,
         config={
             "_panel_custom": {
-                "name": "jarvis-native-panel",
+                "name": "jarvis-native-panel-v107",
                 "embed_iframe": False,
-                "module_url": f"{STATIC_URL}/jarvis-panel.js?v=10.0.0-alpha.1",
+                "module_url": f"{STATIC_URL}/jarvis-panel-v10-7.js?v={PANEL_VERSION}",
             }
         },
     )
