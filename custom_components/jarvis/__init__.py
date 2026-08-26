@@ -11,12 +11,24 @@ from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
     static_path = Path(__file__).parent / "www"
-    await hass.http.async_register_static_paths([StaticPathConfig(STATIC_URL, str(static_path), cache_headers=False)])
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(STATIC_URL, str(static_path), cache_headers=False)
+    ])
     frontend.async_remove_panel(hass, PANEL_URL)
     frontend.async_register_built_in_panel(
-        hass, "custom", sidebar_title=PANEL_TITLE, sidebar_icon=PANEL_ICON,
-        frontend_url_path=PANEL_URL, require_admin=False,
-        config={"_panel_custom": {"name": "jarvis-native-panel-v102", "embed_iframe": False, "module_url": f"{STATIC_URL}/jarvis-panel-v10-2.js?v=10.1.0"}}
+        hass,
+        "custom",
+        sidebar_title=PANEL_TITLE,
+        sidebar_icon=PANEL_ICON,
+        frontend_url_path=PANEL_URL,
+        require_admin=False,
+        config={
+            "_panel_custom": {
+                "name": "jarvis-native-panel-v103",
+                "embed_iframe": False,
+                "module_url": f"{STATIC_URL}/jarvis-panel-v10-3.js?v=10.1.0",
+            }
+        },
     )
     return True
 
