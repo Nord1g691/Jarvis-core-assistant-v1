@@ -1,0 +1,1 @@
+V10.1 native HUD: central V1-inspired core with Home Assistant entity panels positioned around it; responsive mobile fallback; native hass state source; no browser token.
