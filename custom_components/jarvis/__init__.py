@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
 
-PANEL_VERSION = "10.4.4"
+PANEL_VERSION = "10.4.5"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
@@ -26,9 +26,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         require_admin=False,
         config={
             "_panel_custom": {
-                "name": "jarvis-native-panel-v108",
+                "name": "jarvis-native-panel-v109",
                 "embed_iframe": False,
-                "module_url": f"{STATIC_URL}/jarvis-panel-v10-8.js?v={PANEL_VERSION}",
+                "module_url": f"{STATIC_URL}/jarvis-panel-v10-9.js?v={PANEL_VERSION}",
             }
         },
     )
