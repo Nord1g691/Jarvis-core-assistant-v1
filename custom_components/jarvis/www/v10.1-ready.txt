@@ -1,0 +1,1 @@
+The next native HUD revision is based on the V1 visual language and keeps Home Assistant native state access.
