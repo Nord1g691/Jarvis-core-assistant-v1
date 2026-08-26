@@ -2,7 +2,11 @@
   "use strict";
   if (customElements.get("jarvis-native-panel")) return;
 
-  const VERSION = "10.0.0-alpha.1";
+  const VERSION = "10.0.0";
+
+  // JARVIS V10 native Home Assistant panel.
+  // The visual HUD remains intentionally unchanged in this cleanup commit.
+  // Keep authentication native to Home Assistant; never embed a token here.
   const css = `
     :host{display:block;height:100%;background:#01050c;color:#d9faff;font-family:Rajdhani,Arial,sans-serif;overflow:auto}
     *{box-sizing:border-box}button,input{font:inherit}button{cursor:pointer}
@@ -54,18 +58,19 @@
     _entityPanel(title,items){return `<div class="panel"><div class="title"><span>${title}</span><span>${items.length}</span></div><div class="entities">${items.length?items.map(s=>this._chip(s)).join(""):"<div class='empty'>Aucune entité détectée</div>"}</div></div>`}
     _chip(s){const domain=s.entity_id.split(".")[0],on=["on","open","home","playing","unlocked"].includes(String(s.state).toLowerCase());const name=s.attributes?.friendly_name||s.entity_id;return `<div class="chip ${on?"on":""}"><button data-entity="${s.entity_id}">${this._icon(domain)} ${this._esc(name)} <small>${this._esc(String(s.state))}</small></button></div>`}
     _icon(d){return ({light:"💡",switch:"🔘",climate:"🌡️",media_player:"🎵",camera:"📷",lock:"🔒",cover:"🪟",fan:"🌀",binary_sensor:"◉",input_boolean:"☑️"}[d]||"•")}
-    _settingsRows(){const p=this._prefs;return `<div class="row"><span>Observer mode</span><input id="observer" type="checkbox" ${p.observer!==false?"checked":""}></div><div class="row"><span>Rich reasoning</span><input id="reasoning" type="checkbox" ${p.reasoning!==false?"checked":""}></div><div class="row"><span>Visitor learning</span><input id="visitor" type="checkbox" ${p.visitor?"checked":""}></div><div class="row"><span>Package detection</span><input id="packages" type="checkbox" ${p.packages?"checked":""}></div><div class="row"><span>Layout</span><select class="select" id="layout"><option ${p.layout==="orbit"?"selected":""}>orbit</option><option ${p.layout==="compact"?"selected":""}>compact</option><option ${p.layout==="minimal"?"selected":""}>minimal</option></select></div><div class="row"><span>AI provider</span><span>Home Assistant / external / Ollama</span></div>`}
-    _esc(v){return String(v).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]))}
+    _settingsRows(){const p=this._prefs;return `<div class="row"><span>Observer mode</span><input id="observer" type="checkbox" ${p.observer!==false?"checked":""}></div><div class="row"><span>Rich reasoning</span><input id="reasoning" type="checkbox" ${p.reasoning!==false?"checked":""}></div><div class="row"><span>Visitor learning</span><input id="visitor" type="checkbox" ${p.visitor?"checked":""}></div><div class="row"><span>Package detection</span><input id="packages" type="checkbox" ${p.packages?"checked":""}></div>`}
     _bind(states){
-      this.shadowRoot.querySelectorAll("[data-entity]").forEach(b=>b.onclick=()=>this.dispatchEvent(new CustomEvent("hass-more-info",{bubbles:true,composed:true,detail:{entityId:b.dataset.entity}})));
-      this.shadowRoot.getElementById("settingsBtn").onclick=()=>this.shadowRoot.getElementById("settings").classList.add("open");
-      this.shadowRoot.getElementById("close").onclick=()=>this.shadowRoot.getElementById("settings").classList.remove("open");
-      this.shadowRoot.getElementById("save").onclick=()=>{this._prefs={observer:this.shadowRoot.getElementById("observer").checked,reasoning:this.shadowRoot.getElementById("reasoning").checked,visitor:this.shadowRoot.getElementById("visitor").checked,packages:this.shadowRoot.getElementById("packages").checked,layout:this.shadowRoot.getElementById("layout").value};localStorage.setItem("jarvis_native_prefs",JSON.stringify(this._prefs));this.shadowRoot.getElementById("settings").classList.remove("open");};
-      this.shadowRoot.getElementById("send").onclick=()=>this._ask();this.shadowRoot.getElementById("ask").onkeydown=e=>{if(e.key==="Enter")this._ask()};
-      this.shadowRoot.querySelectorAll("[data-action]").forEach(b=>b.onclick=()=>this._quick(b.dataset.action,states));
+      const root=this.shadowRoot;
+      root.querySelector("#settingsBtn")?.addEventListener("click",()=>root.querySelector("#settings")?.classList.add("open"));
+      root.querySelector("#close")?.addEventListener("click",()=>root.querySelector("#settings")?.classList.remove("open"));
+      root.querySelector("#save")?.addEventListener("click",()=>{for(const id of ["observer","reasoning","visitor","packages"]){const el=root.querySelector(`#${id}`);if(el)this._prefs[id]={observer:true,reasoning:true,visitor:false,packages:false}[id]===undefined?el.checked:el.checked;}localStorage.setItem("jarvis_native_prefs",JSON.stringify(this._prefs));root.querySelector("#settings")?.classList.remove("open");});
+      root.querySelectorAll("[data-entity]").forEach(btn=>btn.addEventListener("click",()=>this._toggle(btn.dataset.entity,states[btn.dataset.entity])));
+      root.querySelector("#send")?.addEventListener("click",()=>this._ask(root.querySelector("#ask")?.value||""));
+      root.querySelector("#ask")?.addEventListener("keydown",e=>{if(e.key==="Enter")this._ask(e.target.value||"")});
     }
-    async _ask(){const input=this.shadowRoot.getElementById("ask"),feed=this.shadowRoot.getElementById("feed"),text=input.value.trim();if(!text)return;input.value="";feed.insertAdjacentHTML("afterbegin",`<div>⌨️ ${this._esc(text)}</div>`);try{const result=await this._hass.callWS({type:"conversation/process",text,language:"fr"});const speech=result?.response?.speech?.plain?.speech||result?.response?.speech?.plain?.text||"Commande traitée.";feed.insertAdjacentHTML("afterbegin",`<div>🤖 ${this._esc(speech)}</div>`)}catch(e){feed.insertAdjacentHTML("afterbegin",`<div style="color:#ff7180">JARVIS : ${this._esc(e.message)}</div>`)} }
-    async _quick(kind,states){const domains={lights:["light"],climate:["climate"],media:["media_player"],security:["lock","alarm_control_panel"]}[kind]||[];const entity=Object.values(states).find(s=>domains.includes(s.entity_id.split(".")[0]));if(!entity)return;const d=entity.entity_id.split(".")[0];const service=d==="light"?"toggle":d==="media_player"?"media_play_pause":d==="lock"?"lock":"toggle";if(d==="lock")return this._hass.callService(d,service,{entity_id:entity.entity_id});return this._hass.callService(d,service,{entity_id:entity.entity_id});}
+    _toggle(entity,s){if(!s)return;const domain=entity.split(".")[0];let service=null;if(domain==="light"||domain==="switch")service=s.state==="on"?"turn_off":"turn_on";else if(domain==="fan")service=s.state==="on"?"turn_off":"turn_on";else return;this._hass.callService(domain,service,{entity_id:entity});}
+    async _ask(text){const q=String(text).trim();if(!q)return;const feed=this.shadowRoot.querySelector("#feed");if(feed)feed.innerHTML+=`<div>Vous : ${this._esc(q)}</div>`;try{const result=await this._hass.callWS({type:"conversation/process",text:q});const speech=result?.response?.speech?.plain?.speech||result?.response?.speech?.plain?.text||"Réponse reçue.";if(feed)feed.innerHTML+=`<div>JARVIS : ${this._esc(speech)}</div>`;}catch(e){if(feed)feed.innerHTML+=`<div>JARVIS : impossible de contacter Assist.</div>`;}}
+    _esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
   }
   customElements.define("jarvis-native-panel",JarvisNativePanel);
 })();
