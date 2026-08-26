@@ -21,15 +21,13 @@ import "./jarvis-panel-v10-7.js";
       const I = this.num(imp);
       const N = this.num(net);
 
-      // Positive surplus = energy available for local use.
-      // Enphase/Envoy net power is normally negative while exporting.
       let surplus = null;
       if (E != null) {
         surplus = E;
       } else if (P != null && L != null) {
         surplus = P - L;
       } else if (N != null) {
-        surplus = N < 0 ? -N : -N;
+        surplus = -N;
       }
 
       return { P, L, E, I, N, surplus };
