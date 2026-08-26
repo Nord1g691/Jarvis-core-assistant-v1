@@ -16,7 +16,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     frontend.async_register_built_in_panel(
         hass, "custom", sidebar_title=PANEL_TITLE, sidebar_icon=PANEL_ICON,
         frontend_url_path=PANEL_URL, require_admin=False,
-        config={"_panel_custom": {"name": "jarvis-native-panel-v101", "embed_iframe": False, "module_url": f"{STATIC_URL}/jarvis-panel-v10-1.js?v=10.1.0"}}
+        config={"_panel_custom": {"name": "jarvis-native-panel-v102", "embed_iframe": False, "module_url": f"{STATIC_URL}/jarvis-panel-v10-2.js?v=10.1.0"}}
     )
     return True
 
