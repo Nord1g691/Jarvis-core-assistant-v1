@@ -17,11 +17,13 @@ class JarvisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry):
-        return JarvisOptionsFlow(config_entry)
+        return JarvisOptionsFlow()
 
     async def async_step_user(self, user_input=None):
         """Handle the initial JARVIS configuration step."""
         if user_input is not None:
+            await self.async_set_unique_id("jarvis-native")
+            self._abort_if_unique_id_configured()
             return self.async_create_entry(title="JARVIS", data=user_input)
 
         return self.async_show_form(
@@ -44,15 +46,12 @@ class JarvisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class JarvisOptionsFlow(config_entries.OptionsFlow):
     """Runtime options for JARVIS intelligence features."""
 
-    def __init__(self, config_entry):
-        self._config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
         """Handle JARVIS options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current = self._config_entry.options
+        current = self.config_entry.options
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
