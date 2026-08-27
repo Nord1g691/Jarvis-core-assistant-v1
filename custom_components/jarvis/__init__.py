@@ -24,9 +24,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         require_admin=False,
         config={
             "_panel_custom": {
-                "name": "jarvis-native-panel-v106",
+                "name": "jarvis-native-panel-v107",
                 "embed_iframe": False,
-                "module_url": f"{STATIC_URL}/jarvis-panel-v10-6.js?v=10.3.0",
+                "module_url": f"{STATIC_URL}/jarvis-panel-v10-7-controls.js?v=10.7.2",
             }
         },
     )
