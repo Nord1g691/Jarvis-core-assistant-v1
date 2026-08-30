@@ -1,50 +1,48 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-from homeassistant.components import panel_custom
+from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
+from .const import DOMAIN, PLATFORMS
+from .websocket import async_register as async_register_websocket
 
-from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
-
-PANEL_VERSION = "10.8.0"
-PANEL_NAME = "jarvis-native-panel-v107"
-
+STATIC_URL = "/jarvis_static"
+JARVIS_VERSION = "9.6.3"
+PANEL_NAME = "jarvis-panel"
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
-
-    static_path = Path(__file__).parent / "www"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(STATIC_URL, str(static_path), cache_headers=False)]
-    )
-
-    hass.data.get("frontend_panels", {}).pop(PANEL_URL, None)
-
+    async_register_websocket(hass)
+    www_path = Path(__file__).parent / "www"
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(STATIC_URL, str(www_path), cache_headers=False),
+    ])
+    if frontend.async_panel_exists(hass, DOMAIN):
+        frontend.async_remove_panel(hass, DOMAIN)
     await panel_custom.async_register_panel(
-        hass,
+        hass=hass,
         webcomponent_name=PANEL_NAME,
-        frontend_url_path=PANEL_URL,
-        module_url=f"{STATIC_URL}/jarvis-panel-v10-8.js?v={PANEL_VERSION}",
-        sidebar_title=PANEL_TITLE,
-        sidebar_icon=PANEL_ICON,
+        frontend_url_path=DOMAIN,
+        module_url=f"{STATIC_URL}/jarvis-panel.js?v={JARVIS_VERSION}",
+        sidebar_title="JARVIS",
+        sidebar_icon="mdi:robot-outline",
         require_admin=False,
-        embed_iframe=False,
         config={},
-        config_panel_domain=DOMAIN,
     )
-
     return True
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = dict(entry.data)
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    runtime_data = domain_data.setdefault(entry.entry_id, {})
+    runtime_data["config"] = dict(entry.data)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    return True
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unloaded:
+        hass.data[DOMAIN].pop(entry.entry_id, None)
+    return unloaded
