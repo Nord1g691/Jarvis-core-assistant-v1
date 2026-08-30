@@ -32,4 +32,20 @@ function installJarvisSettings() {
   root.querySelector('#j-continuous').addEventListener('change',update);
   return true;
 }
-customElements.whenDefined('jarvis-native-panel-v107').then(()=>{let tries=0;const timer=setInterval(()=>{if(installJarvisSettings()||++tries>40)clearInterval(timer)},100)});
+
+customElements.whenDefined('jarvis-native-panel-v107').then(()=>{
+  let observedRoot=null;
+  const watch=()=>{
+    const panel=document.querySelector('jarvis-native-panel-v107');
+    const root=panel?.shadowRoot;
+    if(!root) return false;
+    if(root!==observedRoot){
+      observedRoot=root;
+      new MutationObserver(()=>installJarvisSettings()).observe(root,{childList:true});
+    }
+    installJarvisSettings();
+    return true;
+  };
+  let tries=0;
+  const timer=setInterval(()=>{if(watch()||++tries>100)clearInterval(timer)},100);
+});
