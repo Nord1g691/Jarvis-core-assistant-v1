@@ -10,7 +10,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN, PANEL_ICON, PANEL_TITLE, PANEL_URL, STATIC_URL
 
-PANEL_VERSION = "10.4.0"
+PANEL_VERSION = "10.8.0"
 PANEL_NAME = "jarvis-native-panel-v107"
 
 
@@ -28,7 +28,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         hass,
         webcomponent_name=PANEL_NAME,
         frontend_url_path=PANEL_URL,
-        module_url=f"{STATIC_URL}/jarvis-panel-v10-7.js?v={PANEL_VERSION}",
+        module_url=f"{STATIC_URL}/jarvis-panel-v10-8.js?v={PANEL_VERSION}",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         require_admin=False,
